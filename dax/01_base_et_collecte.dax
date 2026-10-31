@@ -1,0 +1,161 @@
+/*
+================================================================================
+ CACAO CÔTE D'IVOIRE · PERFORMANCE SUPPLY CHAIN
+ Fichier  : 01_base_et_collecte.dax
+ Périmètre: mesures de base, collecte, comparaisons N-1 et cumul YTD campagne
+ Table    : _Mesures (table d'accueil dédiée aux mesures)
+--------------------------------------------------------------------------------
+ Conventions
+  - Campagne cacaoyère = 1er octobre -> 30 septembre (ex. 2024/25).
+  - Chaque mouvement se répète à chaque étape de la chaîne : toute mesure de
+    volume ou de CA doit être filtrée sur UNE étape (Collecte ou Export), sinon
+    le tonnage est compté plusieurs fois.
+  - Montants en XOF. Valeurs recalculées en amont (Power Query) à partir des
+    coûts unitaires XOF/kg x poids.
+================================================================================
+*/
+
+
+// ============================================================================
+// 1. MESURES DE BASE (toutes étapes du contexte de filtre)
+// ============================================================================
+
+Poids (kg) =
+    SUM ( fact_Mouvements[Poids (kg)] )
+
+Nb Mouvements =
+    COUNTROWS ( fact_Mouvements )
+
+Valeur Brute (XOF) =
+    SUM ( fact_Mouvements[Valeur brute (XOF)] )          // poids x prix
+
+Valeur Primes (XOF) =
+    SUM ( fact_Mouvements[Valeur primes (XOF)] )         // poids x prime certification
+
+Valeur Nette (XOF) =
+    SUM ( fact_Mouvements[Valeur nette (XOF)] )          // brute + primes - transport - stockage - pertes
+
+Coût Transport (XOF) =
+    SUM ( fact_Mouvements[Coût transport total (XOF)] )
+
+Coût Stockage (XOF) =
+    SUM ( fact_Mouvements[Coût stockage total (XOF)] )
+
+Coût Logistique (XOF) =
+    [Coût Transport (XOF)] + [Coût Stockage (XOF)]
+
+Pertes (kg) =
+    SUM ( fact_Mouvements[Pertes (kg)] )
+
+Valeur Pertes (XOF) =
+    SUM ( fact_Mouvements[Valeur pertes (XOF)] )         // pertes valorisées au prix du mouvement
+
+// Dernière date présente dans les données : ignore tous les filtres.
+// Sert de borne pour comparer des campagnes partielles à périmètre égal.
+Derniere Date Donnees =
+    CALCULATE ( MAX ( fact_Mouvements[Date] ), REMOVEFILTERS () )
+
+Campagne Sélectionnée =
+    SELECTEDVALUE ( dim_Date[Campagne], "Toutes campagnes" )
+
+// 1 si la campagne sélectionnée est partielle (2022/23 et 2025/26).
+Est Campagne Partielle =
+    VAR _c = SELECTEDVALUE ( dim_Date[Campagne complète] )
+    RETURN
+        IF ( NOT ISBLANK ( _c ) && _c = FALSE (), 1, 0 )
+
+
+// ============================================================================
+// 2. COLLECTE
+// ============================================================================
+
+// Tonnage à l'étape "Collecte Coop" uniquement.
+Volume Collecté (t) =
+    CALCULATE ( [Poids (kg)], dim_Evenement[Est collecte] = TRUE () ) / 1000
+
+Sacs Collectés =
+    CALCULATE ( [Sacs], dim_Evenement[Est collecte] = TRUE () )
+
+
+// ----------------------------------------------------------------------------
+// 2.1 Variation N-1 (YoY) à périmètre comparable
+//     Même fenêtre décalée de 12 mois, bornée à la dernière date de données :
+//     une campagne en cours n'est pas comparée à une campagne N-1 complète.
+// ----------------------------------------------------------------------------
+Volume Collecté N-1 (t) =
+    VAR _last = [Derniere Date Donnees]
+    VAR _from = MIN ( dim_Date[Date] )
+    VAR _to   = MIN ( MAX ( dim_Date[Date] ), _last )
+    RETURN
+        CALCULATE (
+            [Volume Collecté (t)],
+            DATESBETWEEN ( dim_Date[Date], EDATE ( _from, -12 ), EDATE ( _to, -12 ) )
+        )
+
+Volume Collecté Comparable (t) =
+    VAR _last = [Derniere Date Donnees]
+    RETURN
+        CALCULATE (
+            [Volume Collecté (t)],
+            KEEPFILTERS ( dim_Date[Date] <= _last )
+        )
+
+Δ Collecte % =
+    DIVIDE (
+        [Volume Collecté Comparable (t)] - [Volume Collecté N-1 (t)],
+        [Volume Collecté N-1 (t)]
+    )
+
+
+// ----------------------------------------------------------------------------
+// 2.2 Cumul YTD sur l'année de campagne (1er octobre -> date courante)
+//     TOTALYTD ( ..., "09-30" ) est évité : la chaîne de fin d'exercice est
+//     interprétée selon la locale et échoue en fr-FR. Fenêtre explicite à la place.
+// ----------------------------------------------------------------------------
+Volume Collecté YTD Campagne (t) =
+    VAR _end   = MAX ( dim_Date[Date] )
+    VAR _start = DATE ( IF ( MONTH ( _end ) >= 10, YEAR ( _end ), YEAR ( _end ) - 1 ), 10, 1 )
+    RETURN
+        CALCULATE ( [Volume Collecté (t)], DATESBETWEEN ( dim_Date[Date], _start, _end ) )
+
+Volume Collecté Mensuel Moyen (t) =
+    AVERAGEX (
+        FILTER ( VALUES ( dim_Date[Année mois] ), [Volume Collecté (t)] > 0 ),
+        [Volume Collecté (t)]
+    )
+
+
+// ----------------------------------------------------------------------------
+// 2.3 Classement et concentration des coopératives
+// ----------------------------------------------------------------------------
+Rang Coopérative =
+    IF (
+        ISINSCOPE ( dim_Cooperative[Coopérative] ),
+        RANKX ( ALLSELECTED ( dim_Cooperative[Coopérative] ), [Volume Collecté (t)], , DESC, DENSE )
+    )
+
+// Nombre minimal de coopératives qui réalisent 50 % du volume collecté.
+Nb Coops 50 % Volume =
+    VAR _t   = ADDCOLUMNS ( ALLSELECTED ( dim_Cooperative[coop_id] ), "@v", [Volume Collecté (t)] )
+    VAR _tot = SUMX ( _t, [@v] )
+    VAR _cum =
+        ADDCOLUMNS (
+            _t,
+            "@before",
+                VAR _v = [@v]
+                RETURN SUMX ( FILTER ( _t, [@v] > _v ), [@v] )   // volume cumulé des coops plus grosses
+        )
+    RETURN
+        COUNTROWS ( FILTER ( _cum, [@before] < 0.5 * _tot ) )
+
+Nb Coops en Croissance =
+    COUNTROWS ( FILTER ( VALUES ( dim_Cooperative[coop_id] ), [Δ Collecte %] > 0 ) )
+
+Nb Coops en Recul =
+    COUNTROWS ( FILTER ( VALUES ( dim_Cooperative[coop_id] ), [Δ Collecte %] <= 0 ) )
+
+Top Coopérative =
+    VAR _top = TOPN ( 1, VALUES ( dim_Cooperative[Coopérative] ), [Δ Collecte %], DESC )
+    RETURN
+        CONCATENATEX ( _top, dim_Cooperative[Coopérative] )
+            & " (" & FORMAT ( MAXX ( _top, [Δ Collecte %] ), "+0%" ) & ")"
