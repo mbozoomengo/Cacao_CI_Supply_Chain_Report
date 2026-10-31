@@ -11,8 +11,7 @@
 
 ## 👤 À propos
 
-**William Mbozo'o** — Data Engineer & Consultant Business Intelligence (Yaoundé, Cameroun).
-Modélisation en étoile, DAX avancé, Power Query, storytelling décisionnel pour comités de direction.
+**Auteur : William Mbozo'o** — Ingénieur en systèmes d'information (Data / BI, Product Owner), Yaoundé.
 
 📲 [WhatsApp](https://wa.me/237691932723) · 🌐 [Portfolio](https://www.william-mbozoo.me/data-engineer) · 💼 [LinkedIn](https://www.linkedin.com/in/william-mbozoo) · 🐙 [GitHub](https://github.com/mbozoomengo)
 
