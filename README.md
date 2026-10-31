@@ -160,14 +160,14 @@ Techniques : variation à périmètre comparable (YTD campagne), pondérations, 
 
 Thème sur mesure « *CacaoTrack Executive* » (palette cacao/moka), titres d'action pilotés par mesures DAX, navigation par boutons, filtre Campagne synchronisé.
 
+### 00 · Vue d'ensemble
+![CacaoTrack, page d'accueil et sommaire](docs/screenshots/00_overview.png)
+
 ### 01 · Synthèse exécutive
-![Synthèse exécutive](docs/images/01_synthese.png)
+![Synthèse exécutive](docs/screenshots/01_synthese.png)
 
-### 06 · Impact économique des certifications
-![Certifications](docs/images/06_certifications.png)
-
-### 07 · Plan d'action & ROI (5 curseurs what-if)
-![Plan d'action et ROI](docs/images/07_plan_roi.png)
+### 04 · Démarque & qualité
+![Démarque et qualité](docs/screenshots/04_demarque.png)
 
 <details>
 <summary>Les 10 pages du rapport</summary>
