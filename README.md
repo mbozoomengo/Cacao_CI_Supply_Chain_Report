@@ -161,6 +161,18 @@ Techniques : variation à périmètre comparable (YTD campagne), pondérations, 
 
 Thème sur mesure « *CacaoTrack Executive* » (palette cacao/moka), titres d'action pilotés par mesures DAX, navigation par boutons, filtre Campagne synchronisé.
 
+### 01 · Synthèse exécutive
+![Synthèse exécutive](docs/images/01_synthese.png)
+
+### 06 · Impact économique des certifications
+![Certifications](docs/images/06_certifications.png)
+
+### 07 · Plan d'action & ROI (5 curseurs what-if)
+![Plan d'action et ROI](docs/images/07_plan_roi.png)
+
+<details>
+<summary>Les 10 pages du rapport</summary>
+
 | Page | Contenu |
 |---|---|
 | Couverture & sommaire | 9 boutons de navigation |
@@ -174,10 +186,7 @@ Thème sur mesure « *CacaoTrack Executive* » (palette cacao/moka), titres d'ac
 | 08 · Hypothèses & risques | Matrice probabilité × impact |
 | 09 · Décisions attendues | Arbitrages pour le Comité |
 
-<!-- Ajoutez vos captures dans docs/images/ puis insérez-les ici :
-![Synthèse](docs/images/01_synthese.png)
--->
-
+</details>
 ---
 
 ## 🛠️ Stack technique
